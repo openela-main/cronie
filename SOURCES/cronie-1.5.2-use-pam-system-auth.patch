@@ -1,0 +1,26 @@
+From 978a00ea7ac92852c153ebb3b2152886730ca51c Mon Sep 17 00:00:00 2001
+From: Marcel Plch <mplch@redhat.com>
+Date: Fri, 7 Dec 2018 15:01:19 +0100
+Subject: [PATCH] Use system-auth instead of password-auth for PAM
+ authentication (#25)
+
+---
+ pam/crond | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/pam/crond b/pam/crond
+index 91964aa..560529d 100644
+--- a/pam/crond
++++ b/pam/crond
+@@ -4,8 +4,8 @@
+ #
+ # Although no PAM authentication is called, auth modules
+ # are used for credential setting
+-auth       include    password-auth
++auth       include    system-auth
+ account    required   pam_access.so
+-account    include    password-auth
++account    include    system-auth
+ session    required   pam_loginuid.so
+-session    include    password-auth
++session    include    system-auth

@@ -6,7 +6,7 @@
 Summary:   Cron daemon for executing programs at set times
 Name:      cronie
 Version:   1.5.7
-Release:   8%{?dist}
+Release:   11%{?dist}
 License:   MIT and BSD and ISC and GPLv2+
 URL:       https://github.com/cronie-crond/cronie
 Source0:   https://github.com/cronie-crond/cronie/releases/download/cronie-%{version}/cronie-%{version}.tar.gz
@@ -17,6 +17,12 @@ Patch:     0002-Add-random-within-range-operator.patch
 Patch:     0003-get_number-Add-missing-NUL-termination-for-the-scann.patch
 Patch:     0004-Fix-regression-in-handling-x-crontab-entries.patch
 Patch:     0005-Fix-regression-in-handling-1-5-crontab-entries.patch
+# Add support for `-n` option in crontab entries
+# https://github.com/cronie-crond/cronie/commit/ce7d5bf0a43d147f8502e6424cd523b56adf5599
+Patch:     n_option.patch
+# Optimization to close fds from /proc/self/fd in case of high nofile limit after fork
+# https://github.com/cronie-crond/cronie/commit/e3682c7135b9176b60d226c60ee4e78cf1ab711b
+Patch:     optimization_to_close_fds.patch
 
 Requires:  dailyjobs
 
@@ -211,6 +217,19 @@ exit 0
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
+* Thu Nov 30 2023 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-11
+- Add `optimization_to_close_fds.patch`
+- Resolves: RHEL-17710
+
+* Thu Nov 16 2023 Jan Houška <jhouska@redhat.com> - 1.5.7-10
+- Related: RHEL-5372
+- remove obsolete tests.
+- Correct gating.yaml for CI.
+
+* Fri Nov 10 2023 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-9
+- Add support for `-n` option in crontab entries
+- Resolves: RHEL-5372 
+
 * Mon Jul 11 2022 Jan Staněk <jstanek@redhat.com> - 1.5.7-8
 - Set 'missingok' for /etc/cron.deny to not recreate it on update
 

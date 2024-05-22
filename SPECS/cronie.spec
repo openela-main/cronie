@@ -6,7 +6,7 @@
 Summary:   Cron daemon for executing programs at set times
 Name:      cronie
 Version:   1.5.2
-Release:   8%{?dist}
+Release:   10%{?dist}
 License:   MIT and BSD and ISC and GPLv2+
 Group:     System Environment/Base
 URL:       https://github.com/cronie-crond/cronie
@@ -53,6 +53,9 @@ Patch6:     0001-Add-random-within-range-operator.patch
 Patch7:     0002-get_number-Add-missing-NUL-termination-for-the-scann.patch
 Patch8:     0003-Fix-regression-in-handling-x-crontab-entries.patch
 Patch9:     0004-Fix-regression-in-handling-1-5-crontab-entries.patch
+# Optimization to close fds from /proc/self/fd in case of high nofile limit after fork
+# https://github.com/cronie-crond/cronie/commit/e3682c7135b9176b60d226c60ee4e78cf1ab711b
+Patch10:     optimization_to_close_fds.patch
 
 %description
 Cronie contains the standard UNIX daemon crond that runs specified programs at
@@ -105,6 +108,7 @@ extra features.
 %patch7 -p1
 %patch8 -p1
 %patch9 -p1
+%patch10 -p1
 
 %build
 %configure \
@@ -233,6 +237,14 @@ exit 0
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
+* Thu Nov 30 2023 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.2-10
+- Bump release because of CI issues
+- Related: RHEL-2609
+
+* Thu Nov 30 2023 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.2-9
+- Add `optimization_to_close_fds.patch`
+- Resolves: RHEL-2609
+
 * Mon Jul 11 2022 Jan Staněk <jstanek@redhat.com> - 1.5.2-8
 - Set 'missingok' for /etc/cron.deny to not recreate it on update
 

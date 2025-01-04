@@ -6,7 +6,7 @@
 Summary:   Cron daemon for executing programs at set times
 Name:      cronie
 Version:   1.5.7
-Release:   11%{?dist}
+Release:   12%{?dist}
 License:   MIT and BSD and ISC and GPLv2+
 URL:       https://github.com/cronie-crond/cronie
 Source0:   https://github.com/cronie-crond/cronie/releases/download/cronie-%{version}/cronie-%{version}.tar.gz
@@ -23,6 +23,9 @@ Patch:     n_option.patch
 # Optimization to close fds from /proc/self/fd in case of high nofile limit after fork
 # https://github.com/cronie-crond/cronie/commit/e3682c7135b9176b60d226c60ee4e78cf1ab711b
 Patch:     optimization_to_close_fds.patch
+# Increase the maximum number of crontab entries
+# https://github.com/cronie-crond/cronie/pull/92/commits/36bb94cceda71c83ca01be22a959d8bf3e59b37b
+Patch:     increase_max_crontabs.patch
 
 Requires:  dailyjobs
 
@@ -40,7 +43,7 @@ Buildrequires: audit-libs-devel >= 1.4.1
 
 BuildRequires:    gcc
 BuildRequires:    systemd
-BuildRequires: make
+BuildRequires:    make
 Obsoletes:        %{name}-sysvinit
 
 Requires(post):   coreutils sed
@@ -217,6 +220,10 @@ exit 0
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
+* Thu Sep 26 2024 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-12
+- Add `increase_max_crontabs.patch`
+- Resolves: RHEL-60278
+
 * Thu Nov 30 2023 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-11
 - Add `optimization_to_close_fds.patch`
 - Resolves: RHEL-17710

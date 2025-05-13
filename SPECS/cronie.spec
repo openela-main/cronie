@@ -6,7 +6,7 @@
 Summary:   Cron daemon for executing programs at set times
 Name:      cronie
 Version:   1.5.7
-Release:   12%{?dist}
+Release:   13%{?dist}
 License:   MIT and BSD and ISC and GPLv2+
 URL:       https://github.com/cronie-crond/cronie
 Source0:   https://github.com/cronie-crond/cronie/releases/download/cronie-%{version}/cronie-%{version}.tar.gz
@@ -43,7 +43,7 @@ Buildrequires: audit-libs-devel >= 1.4.1
 
 BuildRequires:    gcc
 BuildRequires:    systemd
-BuildRequires:    make
+BuildRequires: make
 Obsoletes:        %{name}-sysvinit
 
 Requires(post):   coreutils sed
@@ -144,9 +144,9 @@ install -m 644 -D contrib/cronie.systemd $RPM_BUILD_ROOT/usr/lib/systemd/system/
 %systemd_post crond.service
 
 %post anacron
-[ -e /var/spool/anacron/cron.daily ] || touch /var/spool/anacron/cron.daily 2>/dev/null || :
-[ -e /var/spool/anacron/cron.weekly ] || touch /var/spool/anacron/cron.weekly 2>/dev/null || :
-[ -e /var/spool/anacron/cron.monthly ] || touch /var/spool/anacron/cron.monthly 2>/dev/null || :
+[ -e /var/spool/anacron/cron.daily ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.daily 2>/dev/null || :
+[ -e /var/spool/anacron/cron.weekly ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.weekly 2>/dev/null || :
+[ -e /var/spool/anacron/cron.monthly ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.monthly 2>/dev/null || :
 
 %preun
 # run before a package is removed
@@ -220,9 +220,13 @@ exit 0
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
+* Wed Dec 11 2024 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-13
+- Create anacron timestamp files with correct permissions
+- Resolves: RHEL-5376
+
 * Thu Sep 26 2024 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-12
 - Add `increase_max_crontabs.patch`
-- Resolves: RHEL-60278
+- Resolves: RHEL-60279
 
 * Thu Nov 30 2023 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-11
 - Add `optimization_to_close_fds.patch`

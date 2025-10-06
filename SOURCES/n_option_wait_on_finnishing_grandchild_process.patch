@@ -1,0 +1,25 @@
+From 5cf85f8cbb816ff1df5b317d6f8559b67e1993dd Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ond=C5=99ej=20Poho=C5=99elsk=C3=BD?= <opohorel@redhat.com>
+Date: Wed, 25 Oct 2023 10:58:46 +0200
+Subject: [PATCH] -n option: wait on finnishing grandchild process
+
+With `WNOHANG` we skip sending the email when waitpid() returns 0,
+which happens if the process is still running. Instead, using `0`
+parameter will wait for the process to actually stop running.
+---
+ src/do_command.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/do_command.c b/src/do_command.c
+index d7ca840..2ada913 100644
+--- a/src/do_command.c
++++ b/src/do_command.c
+@@ -579,7 +579,7 @@ static int child_process(entry * e, char **jobenv) {
+ 			if (mail && e->flags & MAIL_WHEN_ERR) {
+ 				int jobstatus = -1;
+ 				if (jobpid > 0) {
+-					while (waitpid(jobpid, &jobstatus, WNOHANG) == -1) {
++					while (waitpid(jobpid, &jobstatus, 0) == -1) {
+ 						if (errno == EINTR) continue;
+ 						log_it("CRON", getpid(), "error", "invalid job pid", errno);
+ 						break;

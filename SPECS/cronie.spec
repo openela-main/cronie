@@ -6,7 +6,7 @@
 Summary:   Cron daemon for executing programs at set times
 Name:      cronie
 Version:   1.5.7
-Release:   14%{?dist}
+Release:   15%{?dist}
 License:   MIT and BSD and ISC and GPLv2+
 URL:       https://github.com/cronie-crond/cronie
 Source0:   https://github.com/cronie-crond/cronie/releases/download/cronie-%{version}/cronie-%{version}.tar.gz
@@ -17,15 +17,29 @@ Patch:     0002-Add-random-within-range-operator.patch
 Patch:     0003-get_number-Add-missing-NUL-termination-for-the-scann.patch
 Patch:     0004-Fix-regression-in-handling-x-crontab-entries.patch
 Patch:     0005-Fix-regression-in-handling-1-5-crontab-entries.patch
+
 # Add support for `-n` option in crontab entries
 # https://github.com/cronie-crond/cronie/commit/ce7d5bf0a43d147f8502e6424cd523b56adf5599
 Patch:     n_option.patch
+# -n option: wait on finnishing grandchild process
+# https://github.com/cronie-crond/cronie/commit/5cf85f8cbb816ff1df5b317d6f8559b67e1993dd
+Patch:     n_option_wait_on_finnish.patch
 # Optimization to close fds from /proc/self/fd in case of high nofile limit after fork
 # https://github.com/cronie-crond/cronie/commit/e3682c7135b9176b60d226c60ee4e78cf1ab711b
 Patch:     optimization_to_close_fds.patch
 # Increase the maximum number of crontab entries
 # https://github.com/cronie-crond/cronie/pull/92/commits/36bb94cceda71c83ca01be22a959d8bf3e59b37b
 Patch:     increase_max_crontabs.patch
+# Rename variables in get_range()
+# Step size out fo bound handling
+# https://github.com/cronie-crond/cronie/pull/154
+Patch:     rename-variables-in-get_range.patch
+Patch:     set-size-out-of-bounds.patch
+# Fix range parsing
+# https://github.com/cronie-crond/cronie/pull/200
+# https://github.com/cronie-crond/cronie/pull/201
+Patch:     fix-range-parsing.patch
+Patch:     move_parsing_code.patch
 
 Requires:  dailyjobs
 
@@ -220,9 +234,15 @@ exit 0
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
-* Fri Jun 20 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-14
-- Rebuild to fix upgradability issue
-- Resolves: RHEL-96297
+* Wed Apr 14 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-15
+- Move parsing code before separator check
+- Related: RHEL-82795
+
+* Fri Apr 11 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-14
+- Rename variables in get_range()
+- Step size out fo bound handling 
+- Fix range parsing
+- Resolves: RHEL-82795
 
 * Wed Dec 11 2024 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-13
 - Create anacron timestamp files with correct permissions

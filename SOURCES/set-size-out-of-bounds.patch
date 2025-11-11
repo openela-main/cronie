@@ -1,0 +1,26 @@
+From d6bb0384975ac179bca7b9d8c5a967880d73415e Mon Sep 17 00:00:00 2001
+From: Alexander Schwinn <alexxcons@xfce.org>
+Date: Thu, 28 Sep 2023 08:25:05 +0200
+Subject: [PATCH] Show error when step size is out of bound
+
+---
+ src/entry.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/entry.c b/src/entry.c
+index 388bca8..586eb9d 100644
+--- a/src/entry.c
++++ b/src/entry.c
+@@ -677,6 +677,12 @@ get_range(bitstr_t * bits, int low, int high, const char *names[],
+ 	if (state != R_FINISH || ch == EOF)
+ 		return (EOF);
+ 
++	/* Make sure the step size makes any sense */
++	if (step > 1 && step > (high_ - low_)) {
++		int max =  high_ - low_ > 0 ? high_ - low_ : 1;
++		fprintf(stderr, "Warning: Step size %i higher than possible maximum of %i\n", step, max);
++	}
++
+ 	for (i = low_; i <= high_; i += step)
+ 		if (EOF == set_element(bits, low, high, i)) {
+ 			unget_char(ch, file);

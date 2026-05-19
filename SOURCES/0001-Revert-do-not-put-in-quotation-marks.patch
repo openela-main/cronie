@@ -1,0 +1,34 @@
+From 3428028e6df0a1e9b2efa1cb52b2722f790d9741 Mon Sep 17 00:00:00 2001
+From: Tomas Mraz <tmraz@fedoraproject.org>
+Date: Thu, 16 Nov 2023 18:01:00 +0100
+Subject: [PATCH 1/3] Revert "do not put <> in quotation marks"
+
+This reverts commit a81bede998b510dadc79917b21e0a6dfbbc3436b.
+---
+ configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 8858a6d..754b8c9 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -196,14 +196,14 @@ AC_DEFINE(DEBUGGING,1,[Code will be built with debug info.])
+ 
+ AC_DEFINE(MAILARG,"/usr/sbin/sendmail",[There will be path to sendmail.])
+ 
+-AC_DEFINE(MAILFMT,"%s -FCronDaemon -i -odi -oem -oi -t -f <>",
++AC_DEFINE(MAILFMT,"%s -FCronDaemon -i -odi -oem -oi -t -f '<>'",
+ [-i    = don't terminate on "." by itself
+ -Fx   = Set full-name of sender
+ -odi  = Option Deliverymode Interactive
+ -oem  = Option Errors Mailedtosender
+ -oi   = Ignore "." alone on a line
+ -t    = Get recipient from headers
+--f <> = Empty envelope sender address
++-f '<>' = Empty envelope sender address
+ -d = undocumented but common flag.])
+ 
+ AC_DEFINE(SYSLOG,1,[Using syslog for log messages.])
+-- 
+2.52.0
+

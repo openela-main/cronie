@@ -1,0 +1,31 @@
+From c640f4f39e5c20995e960e4b954cd0574a96c028 Mon Sep 17 00:00:00 2001
+From: Tomas Mraz <tmraz@fedoraproject.org>
+Date: Thu, 16 Nov 2023 18:12:12 +0100
+Subject: [PATCH 3/3] Use empty envelope address with default mailfrom
+
+This should still reasonably fix the issue resolved in
+https://github.com/cronie-crond/cronie/pull/118
+But it would provide normal envelope address if
+MAILFROM is explicitly set.
+---
+ src/do_command.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/do_command.c b/src/do_command.c
+index 8226a69..d7ca840 100644
+--- a/src/do_command.c
++++ b/src/do_command.c
+@@ -471,7 +471,9 @@ static int child_process(entry * e, char **jobenv) {
+ 				if (MailCmd[0] == '\0') {
+ 					int len;
+ 
+-					len = snprintf(mailcmd, sizeof mailcmd, MAILFMT, MAILARG, mailfrom);
++					/* Use empty envelope address with default mailfrom */
++					len = snprintf(mailcmd, sizeof mailcmd, MAILFMT, MAILARG,
++							mailfrom == e->pwd->pw_name ? "<>" : mailfrom);
+ 					if (len < 0) {
+ 						fprintf(stderr, "mailcmd snprintf failed\n");
+ 						(void) _exit(ERROR_EXIT);
+-- 
+2.52.0
+

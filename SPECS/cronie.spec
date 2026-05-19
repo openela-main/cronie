@@ -1,8 +1,8 @@
 ## START: Set by rpmautospec
-## (rpmautospec version 0.6.5)
+## (rpmautospec version 0.8.3)
 ## RPMAUTOSPEC: autorelease, autochangelog
 %define autorelease(e:s:pb:n) %{?-p:0.}%{lua:
-    release_number = 12;
+    release_number = 14;
     base_release_number = tonumber(rpm.expand("%{?-b*}%{!?-b:1}"));
     print(release_number + base_release_number - 1);
 }%{?-e:.%{-e*}}%{?-s:.%{-s*}}%{!?-n:%{?dist}}
@@ -20,6 +20,8 @@ Release:   %autorelease
 License:   GPL-2.0-or-later AND BSD-3-Clause AND BSD-2-Clause AND ISC AND LGPL-2.1-or-later
 URL:       https://github.com/cronie-crond/cronie
 Source0:   https://github.com/cronie-crond/cronie/releases/download/cronie-%{version}/cronie-%{version}.tar.gz
+Source1:   cronie-tmpfiles.conf
+Source2:   cronie-anacron-tmpfiles.conf
 
 # https://github.com/cronie-crond/cronie/pull/163
 Patch:     n_option_wait_on_finnishing_grandchild_process.patch
@@ -38,6 +40,16 @@ Patch:     move_parsing_code.patch
 # https://github.com/cronie-crond/cronie/pull/206
 Patch:     0001-crontab-Fix-backup-failure-when-cache-directory-mis.patch
 
+# https://github.com/cronie-crond/cronie/pull/210
+Patch:     forward-XDG_SESSION_CLASS-to-PAM-for-session-classification.patch
+
+# https://github.com/cronie-crond/cronie/issues/166
+# two of these patches touched configure.ac, so we need 'automake'as a BuildRequires
+# it is safe to remove it once these patches are part of the upstream release
+Patch:     0001-Revert-do-not-put-in-quotation-marks.patch
+Patch:     0002-Revert-set-the-return-path-hard-to.patch
+Patch:     0003-Use-empty-envelope-address-with-default-mailfrom.patch
+
 Requires:  dailyjobs
 
 %if %{with selinux}
@@ -55,6 +67,7 @@ Buildrequires: audit-libs-devel >= 1.4.1
 BuildRequires:    gcc
 BuildRequires:    systemd
 BuildRequires:    make
+BuildRequires:    automake
 Obsoletes:        %{name}-sysvinit
 
 Requires(post):   coreutils sed
@@ -127,7 +140,6 @@ extra features.
 
 %install
 %make_install DESTMAN=$RPM_BUILD_ROOT%{_mandir}
-mkdir -pm700 $RPM_BUILD_ROOT%{_localstatedir}/spool/cron
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/
 mkdir -pm755 $RPM_BUILD_ROOT%{_sysconfdir}/cron.d/
 %if ! %{with pam}
@@ -139,10 +151,6 @@ install -m 644 contrib/anacrontab $RPM_BUILD_ROOT%{_sysconfdir}/anacrontab
 install -c -m755 contrib/0hourly $RPM_BUILD_ROOT%{_sysconfdir}/cron.d/0hourly
 mkdir -pm 755 $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly
 install -c -m755 contrib/0anacron $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly/0anacron
-mkdir -p $RPM_BUILD_ROOT/var/spool/anacron
-touch $RPM_BUILD_ROOT/var/spool/anacron/cron.daily
-touch $RPM_BUILD_ROOT/var/spool/anacron/cron.weekly
-touch $RPM_BUILD_ROOT/var/spool/anacron/cron.monthly
 
 # noanacron package
 install -m 644 contrib/dailyjobs $RPM_BUILD_ROOT/%{_sysconfdir}/cron.d/dailyjobs
@@ -150,14 +158,19 @@ install -m 644 contrib/dailyjobs $RPM_BUILD_ROOT/%{_sysconfdir}/cron.d/dailyjobs
 # install systemd initscript
 install -m 644 -D contrib/cronie.systemd $RPM_BUILD_ROOT/usr/lib/systemd/system/crond.service
 
+# install tmpfiles.d configuration for bootc compatibility
+install -m 644 -D %{SOURCE1} $RPM_BUILD_ROOT%{_tmpfilesdir}/cronie.conf
+install -m 644 -D %{SOURCE2} $RPM_BUILD_ROOT%{_tmpfilesdir}/cronie-anacron.conf
+
 %post
 # run after an installation
 %systemd_post crond.service
+# create directories via tmpfiles.d for bootc compatibility
+systemd-tmpfiles --create %{_tmpfilesdir}/cronie.conf 2>/dev/null || :
 
 %post anacron
-[ -e /var/spool/anacron/cron.daily ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.daily 2>/dev/null || :
-[ -e /var/spool/anacron/cron.weekly ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.weekly 2>/dev/null || :
-[ -e /var/spool/anacron/cron.monthly ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.monthly 2>/dev/null || :
+# create directories and files via tmpfiles.d for bootc compatibility
+systemd-tmpfiles --create %{_tmpfilesdir}/cronie-anacron.conf 2>/dev/null || :
 
 %preun
 # run before a package is removed
@@ -206,7 +219,6 @@ exit 0
 %{_mandir}/man5/crontab.*
 %{_mandir}/man1/crontab.*
 %{_mandir}/man1/cronnext.*
-%dir %{_localstatedir}/spool/cron
 %dir %{_sysconfdir}/cron.d
 %if %{with pam}
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/pam.d/crond
@@ -215,23 +227,32 @@ exit 0
 %config(noreplace,missingok) %{_sysconfdir}/cron.deny
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/0hourly
 %attr(0644,root,root) /usr/lib/systemd/system/crond.service
+%{_tmpfilesdir}/cronie.conf
+%ghost %dir %attr(0700,root,root) %{_localstatedir}/spool/cron
 
 %files anacron
 %{_sbindir}/anacron
 %attr(0755,root,root) %{_sysconfdir}/cron.hourly/0anacron
 %config(noreplace) %{_sysconfdir}/anacrontab
-%dir /var/spool/anacron
+%ghost %dir %attr(0755,root,root) /var/spool/anacron
 %ghost %attr(0600,root,root) %verify(not md5 size mtime) /var/spool/anacron/cron.daily
 %ghost %attr(0600,root,root) %verify(not md5 size mtime) /var/spool/anacron/cron.weekly
 %ghost %attr(0600,root,root) %verify(not md5 size mtime) /var/spool/anacron/cron.monthly
 %{_mandir}/man5/anacrontab.*
 %{_mandir}/man8/anacron.*
+%{_tmpfilesdir}/cronie-anacron.conf
 
 %files noanacron
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
 ## START: Generated by rpmautospec
+* Wed Jan 14 2026 Ondřej Pohořelský <opohorel@redhat.com> - 1.7.0-14
+- Fix MAILFROM envelope address handling
+
+* Wed Dec 17 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.7.0-13
+- Forward XDG_SESSION_CLASS to PAM for session classification
+
 * Tue Aug 12 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.7.0-12
 - Crontab fix backup failure
 

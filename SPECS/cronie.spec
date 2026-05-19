@@ -6,10 +6,12 @@
 Summary:   Cron daemon for executing programs at set times
 Name:      cronie
 Version:   1.5.7
-Release:   15%{?dist}
+Release:   16%{?dist}
 License:   MIT and BSD and ISC and GPLv2+
 URL:       https://github.com/cronie-crond/cronie
 Source0:   https://github.com/cronie-crond/cronie/releases/download/cronie-%{version}/cronie-%{version}.tar.gz
+Source1:   cronie-tmpfiles.conf
+Source2:   cronie-anacron-tmpfiles.conf
 
 Patch:     0001-Address-issues-found-by-coverity-scan.patch
 # Add support for "~" ("random within range") + regression fixing patches (rhbz#2090691)
@@ -40,6 +42,9 @@ Patch:     set-size-out-of-bounds.patch
 # https://github.com/cronie-crond/cronie/pull/201
 Patch:     fix-range-parsing.patch
 Patch:     move_parsing_code.patch
+
+# https://github.com/cronie-crond/cronie/pull/210
+Patch:     forward-XDG_SESSION_CLASS-to-PAM-for-session-classification.patch
 
 Requires:  dailyjobs
 
@@ -130,7 +135,6 @@ extra features.
 
 %install
 %make_install DESTMAN=$RPM_BUILD_ROOT%{_mandir}
-mkdir -pm700 $RPM_BUILD_ROOT%{_localstatedir}/spool/cron
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/
 mkdir -pm755 $RPM_BUILD_ROOT%{_sysconfdir}/cron.d/
 %if ! %{with pam}
@@ -142,10 +146,6 @@ install -m 644 contrib/anacrontab $RPM_BUILD_ROOT%{_sysconfdir}/anacrontab
 install -c -m755 contrib/0hourly $RPM_BUILD_ROOT%{_sysconfdir}/cron.d/0hourly
 mkdir -pm 755 $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly
 install -c -m755 contrib/0anacron $RPM_BUILD_ROOT%{_sysconfdir}/cron.hourly/0anacron
-mkdir -p $RPM_BUILD_ROOT/var/spool/anacron
-touch $RPM_BUILD_ROOT/var/spool/anacron/cron.daily
-touch $RPM_BUILD_ROOT/var/spool/anacron/cron.weekly
-touch $RPM_BUILD_ROOT/var/spool/anacron/cron.monthly
 
 # noanacron package
 install -m 644 contrib/dailyjobs $RPM_BUILD_ROOT/%{_sysconfdir}/cron.d/dailyjobs
@@ -153,14 +153,19 @@ install -m 644 contrib/dailyjobs $RPM_BUILD_ROOT/%{_sysconfdir}/cron.d/dailyjobs
 # install systemd initscript
 install -m 644 -D contrib/cronie.systemd $RPM_BUILD_ROOT/usr/lib/systemd/system/crond.service
 
+# install tmpfiles.d configuration for bootc compatibility
+install -m 644 -D %{SOURCE1} $RPM_BUILD_ROOT%{_tmpfilesdir}/cronie.conf
+install -m 644 -D %{SOURCE2} $RPM_BUILD_ROOT%{_tmpfilesdir}/cronie-anacron.conf
+
 %post
 # run after an installation
 %systemd_post crond.service
+# create directories via tmpfiles.d for bootc compatibility
+systemd-tmpfiles --create %{_tmpfilesdir}/cronie.conf 2>/dev/null || :
 
 %post anacron
-[ -e /var/spool/anacron/cron.daily ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.daily 2>/dev/null || :
-[ -e /var/spool/anacron/cron.weekly ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.weekly 2>/dev/null || :
-[ -e /var/spool/anacron/cron.monthly ] || install -m 0600 -D /dev/null /var/spool/anacron/cron.monthly 2>/dev/null || :
+# create directories and files via tmpfiles.d for bootc compatibility
+systemd-tmpfiles --create %{_tmpfilesdir}/cronie-anacron.conf 2>/dev/null || :
 
 %preun
 # run before a package is removed
@@ -209,7 +214,6 @@ exit 0
 %{_mandir}/man5/crontab.*
 %{_mandir}/man1/crontab.*
 %{_mandir}/man1/cronnext.*
-%dir %{_localstatedir}/spool/cron
 %dir %{_sysconfdir}/cron.d
 %if %{with pam}
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/pam.d/crond
@@ -218,23 +222,32 @@ exit 0
 %config(noreplace,missingok) %{_sysconfdir}/cron.deny
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/0hourly
 %attr(0644,root,root) /usr/lib/systemd/system/crond.service
+%{_tmpfilesdir}/cronie.conf
+%ghost %dir %attr(0700,root,root) %{_localstatedir}/spool/cron
 
 %files anacron
 %{_sbindir}/anacron
 %attr(0755,root,root) %{_sysconfdir}/cron.hourly/0anacron
 %config(noreplace) %{_sysconfdir}/anacrontab
-%dir /var/spool/anacron
+%ghost %dir %attr(0755,root,root) /var/spool/anacron
 %ghost %attr(0600,root,root) %verify(not md5 size mtime) /var/spool/anacron/cron.daily
 %ghost %attr(0600,root,root) %verify(not md5 size mtime) /var/spool/anacron/cron.weekly
 %ghost %attr(0600,root,root) %verify(not md5 size mtime) /var/spool/anacron/cron.monthly
 %{_mandir}/man5/anacrontab.*
 %{_mandir}/man8/anacron.*
+%{_tmpfilesdir}/cronie-anacron.conf
 
 %files noanacron
 %attr(0644,root,root) %config(noreplace) %{_sysconfdir}/cron.d/dailyjobs
 
 %changelog
-* Wed Apr 14 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-15
+* Wed Dec 17 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-16
+- Forward XDG_SESSION_CLASS to PAM for session classification
+- Also use systemd_tmpfiles to create files in /var, to ensure Cronie
+- works properly in Image mode
+- Resolves: RHEL-131190, RHEL-136491, RHEL-136492
+
+* Wed May 14 2025 Ondřej Pohořelský <opohorel@redhat.com> - 1.5.7-15
 - Move parsing code before separator check
 - Related: RHEL-82795
 

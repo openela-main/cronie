@@ -1,0 +1,40 @@
+From d126d394122b38a08456a54c2906ec3395145fd1 Mon Sep 17 00:00:00 2001
+From: Johannes Segitz <jsegitz@suse.de>
+Date: Thu, 18 Jan 2024 10:51:15 +0100
+Subject: [PATCH] ensure crontab backup file has strict permssions
+
+---
+ src/crontab.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/crontab.c b/src/crontab.c
+index 5318e71..5a86740 100644
+--- a/src/crontab.c
++++ b/src/crontab.c
+@@ -504,6 +504,7 @@ static int backup_crontab(const char *crontab_path) {
+ 	FILE *backup_file;
+ 	struct stat sb;
+ 	int retval = 0;
++	mode_t old_umask;
+ 	
+ 	/* create backup directory */
+ 	if ((env_value = getenv("XDG_CACHE_HOME")) != NULL) {
+@@ -588,6 +589,9 @@ static int backup_crontab(const char *crontab_path) {
+ 		}
+ 	}
+ 	
++	/* ensure backup file has strict permssions. Crontabs are not readable for
++	   other users and might contain sensitive information */
++	old_umask = umask(0077);
+ 	if ((backup_file = fopen(backup_path, "w+")) == NULL) {
+ 		fprintf(stderr, "Failed to write to the backup file: ");
+ 		perror(backup_path);
+@@ -596,6 +600,8 @@ static int backup_crontab(const char *crontab_path) {
+ 	}
+ 
+ 	swapback:
++	umask(old_umask);
++
+ 	if (swap_uids_back() < OK) {
+ 		perror("swapping uids back");
+ 		if (backup_file != NULL) {

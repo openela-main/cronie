@@ -28,7 +28,7 @@ index c11dc81..f6fae67 100644
 +			if (parent_len < sizeof(parent_dir)) {
 +				strncpy(parent_dir, backup_dir, parent_len);
 +				parent_dir[parent_len] = '\0';
-+				mkdir(parent_dir, 0755);
++				mkdir(parent_dir, 0700);
 +			}
 +		}
 +
